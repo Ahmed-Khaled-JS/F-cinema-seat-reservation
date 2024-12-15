@@ -10,7 +10,7 @@ open System.Drawing
 
 [<EntryPoint>]
 let main _ =
-    let filePath = @"D:\College\4th Year\PL3\JS PROJECT V1\TicketBookApp\tickets.json"
+    let filePath = @"C:/Users/Abdo/source/repos/TicketBookApp/tickets.json"
     if not (File.Exists filePath) then
         File.WriteAllText(filePath, "[]") // Initialize with an empty JSON array
 
@@ -93,6 +93,56 @@ let main _ =
         updateSeatsFromTickets(selectedShowtime) // Update seats from tickets
         createSeatGrid(showtimeSeats.[selectedShowtime])
     )
+
+    btnBook.Click.Add(fun _ ->
+        let selectedShowtime = comboBoxForShowTime.SelectedItem
+        if isNull selectedShowtime then
+            lblStatus.Text <- "Please select a showtime."
+        elif String.IsNullOrWhiteSpace(textBoxName.Text) then
+            lblStatus.Text <- "Please enter your name."
+        else
+            let selectedSeats =
+                panelSeats.Controls
+                |> Seq.cast<Button>
+                |> Seq.filter (fun btn -> btn.BackColor = Color.Yellow)
+                |> Seq.toList
+            if selectedSeats.IsEmpty then
+                lblStatus.Text <- "Please select at least one seat."
+            else
+                let mutable bookingSuccess = true
+                selectedSeats |> List.iter (fun btn ->
+                    let seatString = btn.Text
+                    let regex = Regex(@"R(\d+)C(\d+)")
+                    let mm = regex.Match(seatString)
+                    if mm.Success then
+                        let row = int(mm.Groups.[1].Value)
+                        let col = int(mm.Groups.[2].Value)
+                        let seats = showtimeSeats.[selectedShowtime.ToString()]
+                        let targetSeat = seats.[row - 1].[col - 1]
+
+                        if targetSeat.flag then
+                            lblStatus.Text <- $"Seat {seatString} is already booked. Please choose another seat."
+                            btn.BackColor <- Color.Red // Mark as booked
+                            bookingSuccess <- false
+                        else
+                            let updatedSeats =
+                                seats |> List.mapi (fun rIdx rowList ->
+                                    if rIdx = row - 1 then
+                                        rowList |> List.mapi (fun cIdx seat ->
+                                            if cIdx = col - 1 then SeatModel(seat.row, seat.col, true) else seat
+                                        )
+                                    else rowList
+                                )
+                            showtimeSeats.[selectedShowtime.ToString()] <- updatedSeats
+                            btn.BackColor <- Color.Red // Mark as booked
+                            let ticket = TicketModel(Guid.NewGuid(), $"R{row}C{col}", selectedShowtime.ToString(), textBoxName.Text)
+                            let tickets = loadTickets()
+                            tickets.Add(ticket)
+                            saveTickets tickets
+                )
+                if bookingSuccess then
+                    lblStatus.Text <- "Booking successful!"
+        )
 
 
     form.Controls.Add(lblTitle)
