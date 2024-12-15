@@ -1,1 +1,1 @@
-Cinema Reservation with Threads
+Cinema Reservation with Basic Gui
