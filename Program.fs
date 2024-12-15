@@ -44,6 +44,30 @@ let main _ =
     let btnBook = new Button(Text = "BOOK", Top = 470, Left = 300, Width = 100, Height = 50)
     let lblStatus = new Label(Text = "", AutoSize = true, Top = 540, Left = 50, ForeColor = Color.DarkGreen)
 
+    let updateSeatsFromTickets (selectedShowtime: string) =
+        let tickets = 
+            loadTickets() 
+            |> Seq.toList // Convert the .NET List<TicketModel> to an F# list
+        tickets 
+        |> List.filter (fun (ticket: TicketModel) -> ticket.showtime.Trim() = selectedShowtime.Trim())
+        |> List.iter (fun (ticket: TicketModel) ->
+            let regex = Regex(@"R(\d+)C(\d+)")
+            let matchResult = regex.Match(ticket.seat)
+            if matchResult.Success then
+                let row = int(matchResult.Groups.[1].Value)
+                let col = int(matchResult.Groups.[2].Value)
+                let seats = showtimeSeats.[selectedShowtime]
+                let updatedSeats =
+                    seats |> List.mapi (fun rIdx rowList ->
+                        if rIdx = row - 1 then
+                            rowList |> List.mapi (fun cIdx seat ->
+                                if cIdx = col - 1 then SeatModel(seat.row, seat.col, true) else seat
+                            )
+                        else rowList
+                    )
+                showtimeSeats.[selectedShowtime] <- updatedSeats
+        )
+
 
 
     let createSeatGrid seats =
@@ -66,6 +90,7 @@ let main _ =
 
     comboBoxForShowTime.SelectedIndexChanged.Add(fun _ ->
         let selectedShowtime = comboBoxForShowTime.SelectedItem.ToString()
+        updateSeatsFromTickets(selectedShowtime) // Update seats from tickets
         createSeatGrid(showtimeSeats.[selectedShowtime])
     )
 
