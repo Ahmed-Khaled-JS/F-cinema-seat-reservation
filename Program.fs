@@ -28,6 +28,8 @@ let main _ =
     let number_of_rows = 5
     let showtimeSeats = Dictionary<string, SeatModel list list>()
 
+
+    
     let create2DSeats rows cols =
         [ for row in 1 .. rows ->
             [ for col in 1 .. cols -> SeatModel(row, col, false) ] ]
@@ -46,7 +48,59 @@ let main _ =
     let button = new Button(Text = "BOOK", Top = 250, Left = 100, Width = 100, Height = 50)
     let keysList = showtimeSeats.Keys |> Seq.toList
     keysList |> List.iter (fun key -> comboBoxForShowTime.Items.Add(key) |> ignore)
+    let parseSeat seatString =
+        let regex = Regex(@"R(\d+)C(\d+)")
+        let rr = regex.Match(seatString)
+        if rr.Success then
+            let row = int(rr.Groups.[1].Value)
+            let col = int(rr.Groups.[2].Value)
+            Some(row, col)
+        else
+            None
+    let ticketList = loadTickets()
+
     
+    // Iterate over the ticket list
+    for ticket in ticketList do
+            match parseSeat (ticket.seat) with
+            | Some(row, col) -> 
+                let extractedRow = row
+                let extractedCol = col
+                printfn $"r{row} c{col}"
+
+                // Get the showtime key from the comboBox
+                let showtimeKey = ticket.showtime
+
+                // Access the seat list for the selected showtime
+                let seatList = showtimeSeats.[showtimeKey]
+        
+                // Access the specific row and seat (remember, lists are 0-indexed)
+                let rowList = seatList.[extractedRow - 1]
+                let seat = rowList.[extractedCol - 1]
+
+                // Create a new SeatModel with updated flag
+                let updatedSeat = SeatModel(seat.row, seat.col, true)  // Set flag to true
+
+                // Replace the seat in the row with the updated seat
+                let updatedRowList = 
+                    rowList |> List.mapi (fun index s -> if index = extractedCol - 1 then updatedSeat else s)
+
+                // Replace the old row with the updated row in the seat list
+                let updatedSeatList = 
+                    seatList |> List.mapi (fun index r -> if index = extractedRow - 1 then updatedRowList else r)
+
+                // Update the dictionary with the modified seat list
+                showtimeSeats.[showtimeKey] <- updatedSeatList
+
+                // Print updated seat info
+                printfn "Row: %d, Col: %d, Flag: %b, Showtime Key: %s" extractedRow extractedCol updatedSeat.flag showtimeKey
+
+                    
+
+            | None -> 
+            printfn "Invalid seat string"
+            
+        
     let extractSeatDetails (seatString: string) =
         let pattern = @"Seat\(Row: (\d+), Col: (\d+)\)"
         let regex = new Regex(pattern)
@@ -103,7 +157,10 @@ let main _ =
 
         // Print updated seat info
         printfn "Row: %d, Col: %d, Flag: %b, Showtime Key: %s" extractedRow extractedCol updatedSeat.flag showtimeKey
-
+        let Ticket = TicketModel(Guid.NewGuid(),$"R{extractedRow}C{extractedCol}", comboBoxForShowTime.SelectedItem.ToString(), textBox.Text)
+        let tickets = loadTickets()
+        tickets.Add(Ticket)
+        saveTickets tickets
         // Print all seats after the update
         showtimeSeats |> Seq.iter (fun kvp ->
             let showtime = kvp.Key
@@ -126,10 +183,7 @@ let main _ =
     availableSeats |> List.iter (fun seat -> comboBox.Items.Add(seat) |> ignore)
     
 
-    let Ticket = TicketModel(Guid.NewGuid(),$"R{seat.row}C{seat.col}", comboBoxForShowTime.SelectedItem.ToString(), textBox.Text)
-    let tickets = loadTickets()
-    tickets.Add(Ticket)
-    saveTickets tickets
+    
 
     // Show message
     MessageBox.Show($"Button was clicked!{comboBox.SelectedItem}") |> ignore
