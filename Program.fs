@@ -95,6 +95,7 @@ let main _ =
                 seatButton.BackColor <- if seat.flag then Color.Red else Color.LightGreen
                 seatButton.FlatStyle <- FlatStyle.Flat
                 seatButton.FlatAppearance.BorderSize <- 0
+                seatButton.Enabled <- not seat.flag // Disable the button if the seat is booked
                 seatButton.Click.Add(fun _ ->
                     if not seat.flag then
                         seatButton.BackColor <- Color.Yellow
@@ -154,6 +155,7 @@ let main _ =
                                 )
                             showtimeSeats.[selectedShowtime.ToString()] <- updatedSeats
                             btn.BackColor <- Color.Red
+                            btn.Enabled <- false // Disable the button once booked
                             let ticket = TicketModel(Guid.NewGuid(), $"R{row}C{col}", selectedShowtime.ToString(), textBoxName.Text)
                             let tickets = loadTickets()
                             tickets.Add(ticket)
